@@ -49,13 +49,15 @@ type IssuerConfig struct {
 
 // CertificateConfig defines a single certificate to be managed.
 type CertificateConfig struct {
-	Domains         []string `yaml:"domains"`
-	Challenge       string   `yaml:"challenge"`
-	Issuer          string   `yaml:"issuer"`
-	PreHooks        []string `yaml:"pre_hooks"`
-	PostHooks       []string `yaml:"post_hooks"`
-	StoragePath     string   `yaml:"storage_path"`
-	RenewBeforeDays int      `yaml:"renew_before_days"`
+	Domains         []string          `yaml:"domains"`
+	Challenge       string            `yaml:"challenge"`
+	Issuer          string            `yaml:"issuer"`
+	Provider        string            `yaml:"provider"`
+	ProviderOptions map[string]string `yaml:"provider_options"`
+	PreHooks        []string          `yaml:"pre_hooks"`
+	PostHooks       []string          `yaml:"post_hooks"`
+	StoragePath     string            `yaml:"storage_path"`
+	RenewBeforeDays int               `yaml:"renew_before_days"`
 }
 
 // ServerConfig holds settings for server mode.

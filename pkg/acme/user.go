@@ -86,7 +86,7 @@ func generateAndSaveKey(path string) (*ecdsa.PrivateKey, error) {
 	}
 
 	if err := pem.Encode(f, block); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("writing key: %w", err)
 	}
 	if err := f.Close(); err != nil {
