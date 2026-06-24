@@ -19,10 +19,17 @@ const (
 // Config is the top-level configuration structure.
 type Config struct {
 	Global       GlobalConfig            `yaml:"global"`
+	Logging      LoggingConfig           `yaml:"logs"`
 	Issuers      map[string]IssuerConfig `yaml:"issuers"`
 	Certificates []CertificateConfig     `yaml:"certificates"`
 	Server       ServerConfig            `yaml:"server"`
 	Client       ClientConfig            `yaml:"client"`
+}
+
+// LoggingConfig controls log output format and verbosity.
+type LoggingConfig struct {
+	Level  string `yaml:"level"`
+	Format string `yaml:"format"`
 }
 
 // GlobalConfig holds settings that apply across all operating modes.
@@ -35,9 +42,9 @@ type GlobalConfig struct {
 
 // IssuerConfig defines an ACME account for a certificate authority.
 type IssuerConfig struct {
-	Email      string `yaml:"email"`
-	KeyPath    string `yaml:"key_path"`
-	ServerURL  string `yaml:"server_url"`
+	Email     string `yaml:"email"`
+	KeyPath   string `yaml:"key_path"`
+	ServerURL string `yaml:"server_url"`
 }
 
 // CertificateConfig defines a single certificate to be managed.
