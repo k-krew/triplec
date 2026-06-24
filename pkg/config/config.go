@@ -19,7 +19,7 @@ const (
 // Config is the top-level configuration structure.
 type Config struct {
 	Global       GlobalConfig            `yaml:"global"`
-	Logging      LoggingConfig           `yaml:"logs"`
+	Logging      LoggingConfig           `yaml:"logging"`
 	Issuers      map[string]IssuerConfig `yaml:"issuers"`
 	Certificates []CertificateConfig     `yaml:"certificates"`
 	Server       ServerConfig            `yaml:"server"`
