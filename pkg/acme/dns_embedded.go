@@ -69,12 +69,12 @@ func (p *EmbeddedDNSProvider) CleanUp(domain, token, keyAuth string) error {
 }
 
 func (p *EmbeddedDNSProvider) start() error {
-	addr, err := net.ResolveUDPAddr("udp", ":"+p.port)
+	addr, err := net.ResolveUDPAddr("udp4", ":"+p.port)
 	if err != nil {
 		return fmt.Errorf("resolving UDP address: %w", err)
 	}
 
-	conn, err := net.ListenUDP("udp", addr)
+	conn, err := net.ListenUDP("udp4", addr)
 	if err != nil {
 		return fmt.Errorf("starting embedded DNS on port %s: %w", p.port, err)
 	}

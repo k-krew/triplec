@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/challenge/dns01"
+	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
 	legoAcme "github.com/kreicer/triplec/pkg/acme"
@@ -47,7 +49,7 @@ func (u *Updater) Start(ctx context.Context) {
 	}
 
 	slog.Info("updater started", "interval", interval)
-	u.checkAll()
+	u.checkAll(ctx)
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -58,20 +60,20 @@ func (u *Updater) Start(ctx context.Context) {
 			slog.Info("updater stopped")
 			return
 		case <-ticker.C:
-			u.checkAll()
+			u.checkAll(ctx)
 		}
 	}
 }
 
-func (u *Updater) checkAll() {
+func (u *Updater) checkAll(ctx context.Context) {
 	for _, cert := range u.cfg.Certificates {
-		if err := u.renewIfNeeded(cert); err != nil {
+		if err := u.renewIfNeeded(ctx, cert); err != nil {
 			slog.Error("renewal check failed", "domains", cert.Domains, "err", err)
 		}
 	}
 }
 
-func (u *Updater) renewIfNeeded(cert config.CertificateConfig) error {
+func (u *Updater) renewIfNeeded(ctx context.Context, cert config.CertificateConfig) error {
 	threshold := renewThreshold(cert, u.cfg.Global.RenewBeforeDays)
 
 	notAfter, err := certNotAfter(cert)
@@ -89,7 +91,7 @@ func (u *Updater) renewIfNeeded(cert config.CertificateConfig) error {
 		return fmt.Errorf("pre-hook failed: %w", err)
 	}
 
-	res, err := u.obtain(cert)
+	res, err := u.obtain(ctx, cert)
 	if err != nil {
 		return fmt.Errorf("ACME obtain failed: %w", err)
 	}
@@ -102,7 +104,7 @@ func (u *Updater) renewIfNeeded(cert config.CertificateConfig) error {
 	return nil
 }
 
-func (u *Updater) obtain(cert config.CertificateConfig) (*certificate.Resource, error) {
+func (u *Updater) obtain(ctx context.Context, cert config.CertificateConfig) (*certificate.Resource, error) {
 	issuerCfg, ok := u.cfg.Issuers[cert.Issuer]
 	if !ok {
 		return nil, fmt.Errorf("issuer %q not found in config", cert.Issuer)
@@ -125,15 +127,34 @@ func (u *Updater) obtain(cert config.CertificateConfig) (*certificate.Resource, 
 		return nil, fmt.Errorf("creating lego client: %w", err)
 	}
 
-	provider, err := legoAcme.NewChallengeProvider(cert)
-	if err != nil {
-		return nil, err
+	switch cert.Challenge {
+	case "http-01":
+		port := cert.Provider.Options["port"]
+		if port == "" {
+			port = "80"
+		}
+		if err := client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", port)); err != nil {
+			return nil, fmt.Errorf("setting HTTP-01 provider: %w", err)
+		}
+		client.Challenge.Remove(challenge.DNS01)
+		client.Challenge.Remove(challenge.TLSALPN01)
+	default:
+		provider, err := legoAcme.NewChallengeProvider(cert)
+		if err != nil {
+			return nil, err
+		}
+		var dnsOpts []dns01.ChallengeOption
+		if cert.Provider.Name != legoAcme.ProviderCloudflare {
+			dnsOpts = append(dnsOpts, dns01.DisableAuthoritativeNssPropagationRequirement())
+		}
+		if err := client.Challenge.SetDNS01Provider(provider, dnsOpts...); err != nil {
+			return nil, fmt.Errorf("setting DNS-01 provider: %w", err)
+		}
+		client.Challenge.Remove(challenge.HTTP01)
+		client.Challenge.Remove(challenge.TLSALPN01)
 	}
 
-	if err := client.Challenge.SetDNS01Provider(provider, dns01.DisableAuthoritativeNssPropagationRequirement()); err != nil {
-		return nil, fmt.Errorf("setting DNS-01 provider: %w", err)
-	}
-
+	_ = ctx
 	return client.Certificate.Obtain(certificate.ObtainRequest{
 		Domains: cert.Domains,
 		Bundle:  true,
