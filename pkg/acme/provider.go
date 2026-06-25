@@ -19,12 +19,12 @@ const (
 // NewChallengeProvider returns the correct lego challenge.Provider for the
 // given certificate configuration.
 func NewChallengeProvider(cert config.CertificateConfig) (challenge.Provider, error) {
-	opts := cert.ProviderOptions
+	opts := cert.Provider.Options
 	if opts == nil {
 		opts = map[string]string{}
 	}
 
-	switch cert.Provider {
+	switch cert.Provider.Name {
 	case ProviderEmbedded, "":
 		return NewEmbeddedDNSProvider(opts["port"]), nil
 
@@ -32,7 +32,7 @@ func NewChallengeProvider(cert config.CertificateConfig) (challenge.Provider, er
 		return newCloudflareProvider(opts)
 
 	default:
-		return nil, fmt.Errorf("unknown provider %q for domains %v", cert.Provider, cert.Domains)
+		return nil, fmt.Errorf("unknown provider %q for domains %v", cert.Provider.Name, cert.Domains)
 	}
 }
 

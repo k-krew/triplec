@@ -46,6 +46,10 @@ certificates:
       - www.example.com
     challenge: dns-01
     issuer: letsencrypt
+    provider:
+      name: cloudflare
+      options:
+        dns_api_token: tok123
     pre_hooks:
       - echo pre
     post_hooks:
@@ -102,6 +106,12 @@ certificates:
 	}
 	if cert.RenewBeforeDays != 14 {
 		t.Errorf("cert renew_before_days: got %d", cert.RenewBeforeDays)
+	}
+	if cert.Provider.Name != "cloudflare" {
+		t.Errorf("provider.name: got %q", cert.Provider.Name)
+	}
+	if cert.Provider.Options["dns_api_token"] != "tok123" {
+		t.Errorf("provider.options.dns_api_token: got %q", cert.Provider.Options["dns_api_token"])
 	}
 }
 
