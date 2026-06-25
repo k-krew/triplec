@@ -3,8 +3,10 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/go-acme/lego/v4/certificate"
 	"github.com/kreicer/triplec/pkg/config"
 	"github.com/kreicer/triplec/pkg/logger"
+	"github.com/kreicer/triplec/pkg/persist"
 )
 
 // Run is the central entry point after CLI parsing. It loads the config,
@@ -23,6 +25,14 @@ func Run(configPath string) error {
 		return err
 	}
 
-	fmt.Printf("starting in %s mode (routing not yet implemented)\n", cfg.Global.Mode)
-	return nil
+	save := func(cert config.CertificateConfig, res *certificate.Resource) error {
+		return persist.SaveCert(cfg.Global.StoragePath, cert, res)
+	}
+
+	switch cfg.Global.Mode {
+	case config.ModeStandalone:
+		return runStandalone(cfg, save)
+	default:
+		return fmt.Errorf("mode %q not yet implemented", cfg.Global.Mode)
+	}
 }
