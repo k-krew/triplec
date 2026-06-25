@@ -225,11 +225,10 @@ func renewThreshold(cert config.CertificateConfig, globalDays int) time.Duration
 
 func runHooks(hooks []string) error {
 	for _, h := range hooks {
-		parts := strings.Fields(h)
-		if len(parts) == 0 {
+		if strings.TrimSpace(h) == "" {
 			continue
 		}
-		cmd := exec.Command(parts[0], parts[1:]...)
+		cmd := exec.Command("sh", "-c", h)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		slog.Debug("running hook", "cmd", h)
