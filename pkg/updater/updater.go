@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-acme/lego/v4/certificate"
-	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/lego"
@@ -136,8 +135,6 @@ func (u *Updater) obtain(ctx context.Context, cert config.CertificateConfig) (*c
 		if err := client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", port)); err != nil {
 			return nil, fmt.Errorf("setting HTTP-01 provider: %w", err)
 		}
-		client.Challenge.Remove(challenge.DNS01)
-		client.Challenge.Remove(challenge.TLSALPN01)
 	default:
 		provider, err := legoAcme.NewChallengeProvider(cert)
 		if err != nil {
@@ -145,13 +142,13 @@ func (u *Updater) obtain(ctx context.Context, cert config.CertificateConfig) (*c
 		}
 		var dnsOpts []dns01.ChallengeOption
 		if cert.Provider.Name == legoAcme.ProviderEmbedded || cert.Provider.Name == "" {
-			dnsOpts = append(dnsOpts, dns01.DisableAuthoritativeNssPropagationRequirement())
+			// Skip all local DNS propagation checks for the embedded provider,
+			// which answers queries directly and shouldn't be queried via public resolvers.
+			dnsOpts = append(dnsOpts, dns01.PropagationWait(0, true))
 		}
 		if err := client.Challenge.SetDNS01Provider(provider, dnsOpts...); err != nil {
 			return nil, fmt.Errorf("setting DNS-01 provider: %w", err)
 		}
-		client.Challenge.Remove(challenge.HTTP01)
-		client.Challenge.Remove(challenge.TLSALPN01)
 	}
 
 	_ = ctx

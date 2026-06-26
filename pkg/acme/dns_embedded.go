@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/go-acme/lego/v4/challenge/dns01"
@@ -36,9 +37,10 @@ func NewEmbeddedDNSProvider(port string) *EmbeddedDNSProvider {
 
 func (p *EmbeddedDNSProvider) Present(domain, token, keyAuth string) error {
 	info := dns01.GetChallengeInfo(domain, keyAuth)
+	fqdn := strings.ToLower(info.FQDN)
 
 	p.mu.Lock()
-	p.records[info.FQDN] = info.Value
+	p.records[fqdn] = info.Value
 	alreadyRunning := p.conn != nil
 	p.mu.Unlock()
 
@@ -54,9 +56,10 @@ func (p *EmbeddedDNSProvider) Present(domain, token, keyAuth string) error {
 
 func (p *EmbeddedDNSProvider) CleanUp(domain, token, keyAuth string) error {
 	info := dns01.GetChallengeInfo(domain, keyAuth)
+	fqdn := strings.ToLower(info.FQDN)
 
 	p.mu.Lock()
-	delete(p.records, info.FQDN)
+	delete(p.records, fqdn)
 	remaining := len(p.records)
 	p.mu.Unlock()
 
@@ -136,7 +139,7 @@ func (p *EmbeddedDNSProvider) handleQuery(conn *net.UDPConn, addr *net.UDPAddr, 
 			continue
 		}
 
-		fqdn := q.Name.String()
+		fqdn := strings.ToLower(q.Name.String())
 
 		p.mu.RLock()
 		val, ok := p.records[fqdn]
