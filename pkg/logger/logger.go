@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	legolog "github.com/go-acme/lego/v4/log"
 )
 
 // Format controls the output format of the logger.
@@ -36,8 +38,19 @@ func Init(level, format string) error {
 	}
 
 	slog.SetDefault(slog.New(handler))
+	legolog.Logger = &slogAdapter{}
 	return nil
 }
+
+// slogAdapter bridges lego's StdLogger interface to slog.
+type slogAdapter struct{}
+
+func (a *slogAdapter) Fatal(args ...any)                 { slog.Error(fmt.Sprint(args...)); os.Exit(1) }
+func (a *slogAdapter) Fatalln(args ...any)               { slog.Error(fmt.Sprintln(args...)); os.Exit(1) }
+func (a *slogAdapter) Fatalf(f string, args ...any)      { slog.Error(fmt.Sprintf(f, args...)); os.Exit(1) }
+func (a *slogAdapter) Print(args ...any)                 { slog.Info(fmt.Sprint(args...)) }
+func (a *slogAdapter) Println(args ...any)               { slog.Info(fmt.Sprintln(args...)) }
+func (a *slogAdapter) Printf(f string, args ...any)      { slog.Info(fmt.Sprintf(f, args...)) }
 
 func parseLevel(level string) (slog.Level, error) {
 	switch strings.ToLower(level) {

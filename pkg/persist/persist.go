@@ -31,11 +31,6 @@ func SaveCert(globalStoragePath string, cert config.CertificateConfig, res *cert
 	if err := writeAtomic(filepath.Join(dir, "key.pem"), res.PrivateKey, 0o600); err != nil {
 		return err
 	}
-	if len(res.IssuerCertificate) > 0 {
-		if err := writeAtomic(filepath.Join(dir, "issuer.pem"), res.IssuerCertificate, 0o644); err != nil {
-			return err
-		}
-	}
 
 	slog.Info("certificate saved", "dir", dir, "domains", cert.Domains)
 
