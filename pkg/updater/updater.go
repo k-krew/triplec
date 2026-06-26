@@ -144,7 +144,7 @@ func (u *Updater) obtain(ctx context.Context, cert config.CertificateConfig) (*c
 			return nil, err
 		}
 		var dnsOpts []dns01.ChallengeOption
-		if cert.Provider.Name != legoAcme.ProviderCloudflare {
+		if cert.Provider.Name == legoAcme.ProviderEmbedded || cert.Provider.Name == "" {
 			dnsOpts = append(dnsOpts, dns01.DisableAuthoritativeNssPropagationRequirement())
 		}
 		if err := client.Challenge.SetDNS01Provider(provider, dnsOpts...); err != nil {
