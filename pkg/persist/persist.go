@@ -61,7 +61,7 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 	return nil
 }
 
-func resolveDir(globalStoragePath string, cert config.CertificateConfig) string {
+func CertDir(globalStoragePath string, cert config.CertificateConfig) string {
 	if cert.StoragePath != "" {
 		return cert.StoragePath
 	}
@@ -73,6 +73,10 @@ func resolveDir(globalStoragePath string, cert config.CertificateConfig) string 
 		return filepath.Join(globalStoragePath, primary)
 	}
 	return primary
+}
+
+func resolveDir(globalStoragePath string, cert config.CertificateConfig) string {
+	return CertDir(globalStoragePath, cert)
 }
 
 func runHooks(hooks []string) error {

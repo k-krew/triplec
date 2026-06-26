@@ -20,6 +20,7 @@ import (
 	"github.com/go-acme/lego/v4/registration"
 	legoAcme "github.com/kreicer/triplec/pkg/acme"
 	"github.com/kreicer/triplec/pkg/config"
+	"github.com/kreicer/triplec/pkg/persist"
 )
 
 const defaultRenewBeforeDays = 30
@@ -75,12 +76,14 @@ func (u *Updater) checkAll(ctx context.Context) {
 func (u *Updater) renewIfNeeded(ctx context.Context, cert config.CertificateConfig) error {
 	threshold := renewThreshold(cert, u.cfg.Global.RenewBeforeDays)
 
-	notAfter, err := certNotAfter(cert)
+	certPath := filepath.Join(persist.CertDir(u.cfg.Global.StoragePath, cert), "cert.pem")
+	existing, err := parseCert(certPath)
 	if err != nil {
-		// No cert on disk yet — treat as needing immediate issuance.
 		slog.Info("no existing certificate found, requesting initial issuance", "domains", cert.Domains)
-	} else if time.Now().Before(notAfter.Add(-threshold)) {
-		slog.Debug("certificate is current, skipping", "domains", cert.Domains, "expires", notAfter)
+	} else if domainsChanged(existing, cert.Domains) {
+		slog.Info("domain list changed, renewing certificate", "domains", cert.Domains)
+	} else if time.Now().Before(existing.NotAfter.Add(-threshold)) {
+		slog.Debug("certificate is current, skipping", "domains", cert.Domains, "expires", existing.NotAfter)
 		return nil
 	}
 
@@ -198,36 +201,42 @@ func ensureRegistered(user *legoAcme.User, issuerCfg config.IssuerConfig) error 
 	return os.WriteFile(regPath, data, 0o600)
 }
 
-// certNotAfter parses the first certificate PEM block from the storage path
-// and returns its NotAfter time.
-func certNotAfter(cert config.CertificateConfig) (time.Time, error) {
-	path := certFilePath(cert)
+// parseCert reads and parses the first certificate PEM block from path.
+func parseCert(path string) (*x509.Certificate, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return time.Time{}, err
+		return nil, err
 	}
 
 	block, _ := pem.Decode(data)
 	if block == nil {
-		return time.Time{}, fmt.Errorf("no PEM block in %s", path)
+		return nil, fmt.Errorf("no PEM block in %s", path)
 	}
 
-	parsed, err := x509.ParseCertificate(block.Bytes)
+	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("parsing certificate: %w", err)
+		return nil, fmt.Errorf("parsing certificate: %w", err)
 	}
 
-	return parsed.NotAfter, nil
+	return cert, nil
 }
 
-func certFilePath(cert config.CertificateConfig) string {
-	if cert.StoragePath != "" {
-		return cert.StoragePath
+// domainsChanged reports whether the certificate's DNS SANs differ from the
+// requested domain list.
+func domainsChanged(cert *x509.Certificate, requested []string) bool {
+	if len(cert.DNSNames) != len(requested) {
+		return true
 	}
-	if len(cert.Domains) > 0 {
-		return filepath.Join(cert.Domains[0], "cert.pem")
+	existing := make(map[string]struct{}, len(cert.DNSNames))
+	for _, d := range cert.DNSNames {
+		existing[strings.ToLower(d)] = struct{}{}
 	}
-	return "cert.pem"
+	for _, d := range requested {
+		if _, ok := existing[strings.ToLower(d)]; !ok {
+			return true
+		}
+	}
+	return false
 }
 
 func renewThreshold(cert config.CertificateConfig, globalDays int) time.Duration {
