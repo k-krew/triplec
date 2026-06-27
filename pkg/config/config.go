@@ -75,8 +75,9 @@ type ServerConfig struct {
 
 // ClientConfig holds settings for client mode.
 type ClientConfig struct {
-	ServerURL string `yaml:"server_url"`
-	AuthToken string `yaml:"auth_token"`
+	ServerURL          string `yaml:"server_url"`
+	AuthToken          string `yaml:"auth_token"`
+	InsecureSkipVerify bool   `yaml:"insecure_skip_verify"`
 }
 
 // LoadConfig reads and parses the YAML config file at the given path.
