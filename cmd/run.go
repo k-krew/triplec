@@ -32,6 +32,8 @@ func Run(configPath string) error {
 	switch cfg.Global.Mode {
 	case config.ModeStandalone:
 		return runStandalone(cfg, save)
+	case config.ModeServer:
+		return runServer(cfg, save)
 	default:
 		return fmt.Errorf("mode %q not yet implemented", cfg.Global.Mode)
 	}
