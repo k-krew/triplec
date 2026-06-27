@@ -1,17 +1,22 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/kreicer/triplec/pkg/config"
 	"github.com/kreicer/triplec/pkg/logger"
+	"github.com/kreicer/triplec/pkg/persist"
 )
 
 // CertResponse mirrors the JSON payload returned by the TripleC server.
@@ -98,7 +103,7 @@ func (c *Client) poll(cert config.CertificateConfig) error {
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		slog.Info("certificate not yet available on server, will retry",
@@ -118,3 +123,29 @@ func (c *Client) poll(cert config.CertificateConfig) error {
 
 	return c.onCert(cert, &certResp)
 }
+
+// NewCertHandler returns an OnCertFunc that compares the server's certificate
+// with the locally stored one. If they are identical, the update is skipped.
+// If different (or no local copy exists), saveFn is called with the decoded materials.
+func NewCertHandler(globalStoragePath string, saveFn SaveFunc) OnCertFunc {
+	return func(cert config.CertificateConfig, resp *CertResponse) error {
+		domains := logger.JoinDomains(cert.Domains)
+
+		incoming, err := base64.StdEncoding.DecodeString(resp.Certificate)
+		if err != nil {
+			return fmt.Errorf("decoding certificate from server: %w", err)
+		}
+
+		localPath := filepath.Join(persist.CertDir(globalStoragePath, cert), "cert.pem")
+		local, err := os.ReadFile(localPath)
+		if err == nil && bytes.Equal(local, incoming) {
+			slog.Debug("certificate is current, skipping", "domains", domains)
+			return nil
+		}
+
+		return saveFn(cert, resp)
+	}
+}
+
+// SaveFunc is called by NewCertHandler when a certificate update is needed.
+type SaveFunc func(cert config.CertificateConfig, resp *CertResponse) error
