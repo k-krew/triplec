@@ -68,7 +68,7 @@ func CertDir(globalStoragePath string, cert config.CertificateConfig) string {
 	}
 	primary := ""
 	if len(cert.Domains) > 0 {
-		primary = cert.Domains[0]
+		primary = strings.ReplaceAll(cert.Domains[0], "*", "_wildcard")
 	}
 	if globalStoragePath != "" {
 		return filepath.Join(globalStoragePath, primary)
