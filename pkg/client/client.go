@@ -45,8 +45,8 @@ func New(cfg *config.Config, onCert OnCertFunc) *Client {
 		},
 	}
 	return &Client{
-		cfg:  cfg,
-		http: &http.Client{Timeout: 30 * time.Second, Transport: transport},
+		cfg:    cfg,
+		http:   &http.Client{Timeout: 30 * time.Second, Transport: transport},
 		onCert: onCert,
 	}
 }
@@ -91,8 +91,10 @@ func (c *Client) poll(cert config.CertificateConfig) error {
 	if len(cert.Domains) == 0 {
 		return nil
 	}
-	primary := cert.Domains[0]
-	url := strings.TrimRight(c.cfg.Client.ServerURL, "/") + "/api/v1/certs/" + primary
+	// Use the sanitized directory name (e.g. _wildcard.kreicer.dev) so that
+	// wildcard domains are not sent as literal '*' characters in the URL path.
+	key := persist.CertDir("", cert)
+	url := strings.TrimRight(c.cfg.Client.ServerURL, "/") + "/api/v1/certs/" + key
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

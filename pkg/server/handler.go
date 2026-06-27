@@ -71,9 +71,13 @@ func buildDomainIndex(globalStoragePath string, certs []config.CertificateConfig
 	index := make(map[string]string, len(certs))
 	for _, cert := range certs {
 		dir := persist.CertDir(globalStoragePath, cert)
+		// Index by each raw domain for direct lookups, and also by the
+		// sanitized primary key (_wildcard.*) so wildcard cert clients
+		// can fetch without '*' in the URL path.
 		for _, domain := range cert.Domains {
 			index[domain] = dir
 		}
+		index[persist.CertDir("", cert)] = dir
 	}
 	return index
 }
