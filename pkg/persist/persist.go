@@ -35,7 +35,7 @@ func SaveCert(globalStoragePath string, cert config.CertificateConfig, res *cert
 
 	slog.Info("certificate saved", "dir", dir, "domains", logger.JoinDomains(cert.Domains))
 
-	return runHooks(cert.PostHooks)
+	return RunHooks(cert.PostHooks)
 }
 
 // writeAtomic writes data to path by first writing to a temporary file in the
@@ -80,7 +80,8 @@ func resolveDir(globalStoragePath string, cert config.CertificateConfig) string 
 	return CertDir(globalStoragePath, cert)
 }
 
-func runHooks(hooks []string) error {
+// RunHooks executes a list of shell commands sequentially via sh -c.
+func RunHooks(hooks []string) error {
 	for _, h := range hooks {
 		if strings.TrimSpace(h) == "" {
 			continue
@@ -88,9 +89,9 @@ func runHooks(hooks []string) error {
 		cmd := exec.Command("sh", "-c", h)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		slog.Debug("running post-hook", "cmd", h)
+		slog.Debug("running hook", "cmd", h)
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("post-hook %q: %w", h, err)
+			return fmt.Errorf("hook %q: %w", h, err)
 		}
 	}
 	return nil

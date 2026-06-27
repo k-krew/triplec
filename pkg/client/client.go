@@ -172,6 +172,10 @@ func NewSaveFunc(globalStoragePath string) SaveFunc {
 			PrivateKey:  keyPEM,
 		}
 
+		if err := persist.RunHooks(cert.PreHooks); err != nil {
+			return fmt.Errorf("pre-hook failed: %w", err)
+		}
+
 		return persist.SaveCert(globalStoragePath, cert, res)
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -98,7 +97,7 @@ func (u *Updater) renewIfNeeded(ctx context.Context, cert config.CertificateConf
 
 	slog.Info("renewing certificate", attrs...)
 
-	if err := runHooks(cert.PreHooks); err != nil {
+	if err := persist.RunHooks(cert.PreHooks); err != nil {
 		return fmt.Errorf("pre-hook failed: %w", err)
 	}
 
@@ -259,18 +258,3 @@ func renewThreshold(cert config.CertificateConfig, globalDays int) time.Duration
 	return time.Duration(days) * 24 * time.Hour
 }
 
-func runHooks(hooks []string) error {
-	for _, h := range hooks {
-		if strings.TrimSpace(h) == "" {
-			continue
-		}
-		cmd := exec.Command("sh", "-c", h)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		slog.Debug("running hook", "cmd", h)
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("hook %q: %w", h, err)
-		}
-	}
-	return nil
-}
