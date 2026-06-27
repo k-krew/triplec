@@ -36,13 +36,27 @@ func New(listenAddr, authToken string) (*Server, *http.ServeMux) {
 	return &Server{http: srv}, mux
 }
 
-// Start begins serving and blocks until ctx is cancelled, then shuts down
+// Serve starts the server and blocks until ctx is cancelled, then shuts down
 // gracefully with a 10-second drain window.
-func (s *Server) Start(ctx context.Context) error {
+//
+// If certFile and keyFile are both non-empty, the server uses TLS
+// (ListenAndServeTLS). Otherwise it falls back to plain HTTP (ListenAndServe).
+// Dynamic ACME provisioning for the server itself is intentionally not
+// supported — the server may not be publicly reachable, which makes it
+// unsuitable as an ACME responder.
+func (s *Server) Serve(ctx context.Context, certFile, keyFile string) error {
 	errCh := make(chan error, 1)
+
 	go func() {
-		slog.Info("HTTP server listening", "addr", s.http.Addr)
-		if err := s.http.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if certFile != "" && keyFile != "" {
+			slog.Info("HTTPS server listening", "addr", s.http.Addr)
+			err = s.http.ListenAndServeTLS(certFile, keyFile)
+		} else {
+			slog.Info("HTTP server listening", "addr", s.http.Addr)
+			err = s.http.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
 	}()
@@ -55,29 +69,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	slog.Info("HTTP server shutting down")
-	return s.http.Shutdown(shutCtx)
-}
-
-// StartTLS is identical to Start but uses the provided cert and key files.
-func (s *Server) StartTLS(ctx context.Context, certFile, keyFile string) error {
-	errCh := make(chan error, 1)
-	go func() {
-		slog.Info("HTTPS server listening", "addr", s.http.Addr)
-		if err := s.http.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
-			errCh <- err
-		}
-	}()
-
-	select {
-	case err := <-errCh:
-		return err
-	case <-ctx.Done():
-	}
-
-	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	slog.Info("HTTPS server shutting down")
+	slog.Info("server shutting down")
 	return s.http.Shutdown(shutCtx)
 }
 
