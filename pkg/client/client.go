@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-acme/lego/v4/certificate"
 	"github.com/kreicer/triplec/pkg/config"
 	"github.com/kreicer/triplec/pkg/logger"
 	"github.com/kreicer/triplec/pkg/persist"
@@ -149,3 +150,26 @@ func NewCertHandler(globalStoragePath string, saveFn SaveFunc) OnCertFunc {
 
 // SaveFunc is called by NewCertHandler when a certificate update is needed.
 type SaveFunc func(cert config.CertificateConfig, resp *CertResponse) error
+
+// NewSaveFunc returns a SaveFunc that decodes the base64 certificate and private
+// key from the server response and delegates to persist.SaveCert.
+func NewSaveFunc(globalStoragePath string) SaveFunc {
+	return func(cert config.CertificateConfig, resp *CertResponse) error {
+		certPEM, err := base64.StdEncoding.DecodeString(resp.Certificate)
+		if err != nil {
+			return fmt.Errorf("decoding certificate: %w", err)
+		}
+
+		keyPEM, err := base64.StdEncoding.DecodeString(resp.PrivateKey)
+		if err != nil {
+			return fmt.Errorf("decoding private key: %w", err)
+		}
+
+		res := &certificate.Resource{
+			Certificate: certPEM,
+			PrivateKey:  keyPEM,
+		}
+
+		return persist.SaveCert(globalStoragePath, cert, res)
+	}
+}
