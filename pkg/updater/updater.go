@@ -20,6 +20,7 @@ import (
 	"github.com/go-acme/lego/v4/registration"
 	legoAcme "github.com/kreicer/triplec/pkg/acme"
 	"github.com/kreicer/triplec/pkg/config"
+	"github.com/kreicer/triplec/pkg/logger"
 	"github.com/kreicer/triplec/pkg/persist"
 )
 
@@ -68,7 +69,7 @@ func (u *Updater) Start(ctx context.Context) {
 func (u *Updater) checkAll(ctx context.Context) {
 	for _, cert := range u.cfg.Certificates {
 		if err := u.renewIfNeeded(ctx, cert); err != nil {
-			slog.Error("renewal check failed", "domains", cert.Domains, "err", err)
+			slog.Error("renewal check failed", "domains", logger.JoinDomains(cert.Domains), "err", err)
 		}
 	}
 }
@@ -78,16 +79,24 @@ func (u *Updater) renewIfNeeded(ctx context.Context, cert config.CertificateConf
 
 	certPath := filepath.Join(persist.CertDir(u.cfg.Global.StoragePath, cert), "cert.pem")
 	existing, err := parseCert(certPath)
+	domains := logger.JoinDomains(cert.Domains)
+	attrs := []any{
+		"domains", domains,
+		"challenge", cert.Challenge,
+		"provider", cert.Provider.Name,
+		"issuer", cert.Issuer,
+	}
+
 	if err != nil {
-		slog.Info("no existing certificate found, requesting initial issuance", "domains", cert.Domains)
+		slog.Info("no existing certificate found, requesting initial issuance", attrs...)
 	} else if domainsChanged(existing, cert.Domains) {
-		slog.Info("domain list changed, renewing certificate", "domains", cert.Domains)
+		slog.Info("domain list changed, renewing certificate", attrs...)
 	} else if time.Now().Before(existing.NotAfter.Add(-threshold)) {
-		slog.Debug("certificate is current, skipping", "domains", cert.Domains, "expires", existing.NotAfter)
+		slog.Debug("certificate is current, skipping", "domains", domains, "expires", existing.NotAfter)
 		return nil
 	}
 
-	slog.Info("renewing certificate", "domains", cert.Domains)
+	slog.Info("renewing certificate", attrs...)
 
 	if err := runHooks(cert.PreHooks); err != nil {
 		return fmt.Errorf("pre-hook failed: %w", err)
@@ -102,7 +111,7 @@ func (u *Updater) renewIfNeeded(ctx context.Context, cert config.CertificateConf
 		return fmt.Errorf("saving certificate: %w", err)
 	}
 
-	slog.Info("certificate renewed successfully", "domains", cert.Domains)
+	slog.Info("certificate renewed successfully", attrs...)
 	return nil
 }
 

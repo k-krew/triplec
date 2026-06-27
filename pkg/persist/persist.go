@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/kreicer/triplec/pkg/config"
+	"github.com/kreicer/triplec/pkg/logger"
 )
 
 // SaveCert writes the certificate bundle and private key from res to disk,
@@ -32,7 +33,7 @@ func SaveCert(globalStoragePath string, cert config.CertificateConfig, res *cert
 		return err
 	}
 
-	slog.Info("certificate saved", "dir", dir, "domains", cert.Domains)
+	slog.Info("certificate saved", "dir", dir, "domains", logger.JoinDomains(cert.Domains))
 
 	return runHooks(cert.PostHooks)
 }

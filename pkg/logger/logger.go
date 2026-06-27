@@ -43,14 +43,31 @@ func Init(level, format string) error {
 }
 
 // slogAdapter bridges lego's StdLogger interface to slog.
+// Lego prefixes its messages with [INFO] or [WARN]; we parse those to route
+// to the correct slog level and strip the prefix from the message body.
 type slogAdapter struct{}
 
 func (a *slogAdapter) Fatal(args ...any)            { slog.Error(fmt.Sprint(args...)); os.Exit(1) }
 func (a *slogAdapter) Fatalln(args ...any)          { slog.Error(fmt.Sprintln(args...)); os.Exit(1) }
 func (a *slogAdapter) Fatalf(f string, args ...any) { slog.Error(fmt.Sprintf(f, args...)); os.Exit(1) }
-func (a *slogAdapter) Print(args ...any)            { slog.Info(fmt.Sprint(args...)) }
-func (a *slogAdapter) Println(args ...any)          { slog.Info(fmt.Sprintln(args...)) }
-func (a *slogAdapter) Printf(f string, args ...any) { slog.Info(fmt.Sprintf(f, args...)) }
+func (a *slogAdapter) Print(args ...any)            { logLegoMsg(fmt.Sprint(args...)) }
+func (a *slogAdapter) Println(args ...any)          { logLegoMsg(fmt.Sprintln(args...)) }
+func (a *slogAdapter) Printf(f string, args ...any) { logLegoMsg(fmt.Sprintf(f, args...)) }
+
+func logLegoMsg(msg string) {
+	msg = strings.TrimRight(msg, "\n")
+	switch {
+	case strings.HasPrefix(msg, "[WARN]"):
+		slog.Warn(strings.TrimSpace(strings.TrimPrefix(msg, "[WARN]")))
+	default:
+		slog.Debug(strings.TrimSpace(strings.TrimPrefix(msg, "[INFO]")))
+	}
+}
+
+// JoinDomains formats a domain list as a comma-separated string for log attributes.
+func JoinDomains(domains []string) string {
+	return strings.Join(domains, ", ")
+}
 
 func parseLevel(level string) (slog.Level, error) {
 	switch strings.ToLower(level) {
