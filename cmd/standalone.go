@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/kreicer/triplec/pkg/config"
-	"github.com/kreicer/triplec/pkg/updater"
+	"github.com/k-krew/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/updater"
 )
 
 func runStandalone(cfg *config.Config, save updater.SaveFunc) error {

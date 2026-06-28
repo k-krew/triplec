@@ -17,10 +17,10 @@ import (
 	"github.com/go-acme/lego/v4/challenge/http01"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
-	legoAcme "github.com/kreicer/triplec/pkg/acme"
-	"github.com/kreicer/triplec/pkg/config"
-	"github.com/kreicer/triplec/pkg/logger"
-	"github.com/kreicer/triplec/pkg/persist"
+	legoAcme "github.com/k-krew/triplec/pkg/acme"
+	"github.com/k-krew/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/logger"
+	"github.com/k-krew/triplec/pkg/persist"
 )
 
 // SaveFunc is called with the renewed certificate material so the persistence

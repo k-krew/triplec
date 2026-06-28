@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/go-acme/lego/v4/certificate"
-	"github.com/kreicer/triplec/pkg/config"
-	"github.com/kreicer/triplec/pkg/logger"
+	"github.com/k-krew/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/logger"
 )
 
 const hookTimeout = 60 * time.Second

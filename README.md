@@ -19,20 +19,20 @@ Instead of running full ACME clients on every internal server (which requires ou
 
 ### Binary Download
 
-Grab the latest pre-compiled binary for your OS and architecture from the [GitHub Releases](https://github.com/kreicer/triplec/releases) page and place it in your `$PATH`.
+Grab the latest pre-compiled binary for your OS and architecture from the [GitHub Releases](https://github.com/k-krew/triplec/releases) page and place it in your `$PATH`.
 
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew tap kreicer/tap
-brew trust kreicer/tap
+brew tap k-krew/tap
+brew trust k-krew/tap
 brew install --cask triplec
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/kreicer/triplec.git
+git clone https://github.com/k-krew/triplec.git
 cd triplec
 go build -o triplec ./cmd/triplec
 ```

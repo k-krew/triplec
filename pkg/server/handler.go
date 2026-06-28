@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/kreicer/triplec/pkg/config"
-	"github.com/kreicer/triplec/pkg/persist"
+	"github.com/k-krew/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/persist"
 )
 
 // CertResponse is the JSON payload returned by GET /api/v1/certs/{domain}.

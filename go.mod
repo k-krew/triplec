@@ -1,4 +1,4 @@
-module github.com/kreicer/triplec
+module github.com/k-krew/triplec
 
 go 1.26.1
 

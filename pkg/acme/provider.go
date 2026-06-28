@@ -8,7 +8,7 @@ import (
 	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/providers/dns/cloudflare"
-	"github.com/kreicer/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/config"
 )
 
 const (

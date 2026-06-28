@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/kreicer/triplec/pkg/client"
-	"github.com/kreicer/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/client"
+	"github.com/k-krew/triplec/pkg/config"
 )
 
 func runClient(cfg *config.Config) error {

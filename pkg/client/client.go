@@ -16,9 +16,9 @@ import (
 	"time"
 
 	"github.com/go-acme/lego/v4/certificate"
-	"github.com/kreicer/triplec/pkg/config"
-	"github.com/kreicer/triplec/pkg/logger"
-	"github.com/kreicer/triplec/pkg/persist"
+	"github.com/k-krew/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/logger"
+	"github.com/k-krew/triplec/pkg/persist"
 )
 
 // CertResponse mirrors the JSON payload returned by the TripleC server.

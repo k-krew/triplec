@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kreicer/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/config"
 )
 
 const version = "0.1.0-dev"

@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/go-acme/lego/v4/certificate"
-	"github.com/kreicer/triplec/pkg/config"
-	"github.com/kreicer/triplec/pkg/logger"
-	"github.com/kreicer/triplec/pkg/persist"
-	"github.com/kreicer/triplec/pkg/updater"
+	"github.com/k-krew/triplec/pkg/config"
+	"github.com/k-krew/triplec/pkg/logger"
+	"github.com/k-krew/triplec/pkg/persist"
+	"github.com/k-krew/triplec/pkg/updater"
 )
 
 // Run is the central entry point after CLI parsing. It loads the config,
