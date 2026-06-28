@@ -17,9 +17,34 @@ func runStandalone(cfg *config.Config, save updater.SaveFunc) error {
 
 	slog.Info("starting standalone mode")
 
-	u := updater.New(cfg, save)
-	u.Start(ctx)
+	sighup := make(chan os.Signal, 1)
+	signal.Notify(sighup, syscall.SIGHUP)
 
-	slog.Info("shutdown complete")
-	return nil
+	updaterCtx, cancelUpdater := context.WithCancel(ctx)
+
+	for {
+		u := updater.New(cfg, save)
+		go u.Start(updaterCtx)
+
+		select {
+		case <-ctx.Done():
+			cancelUpdater()
+			slog.Info("shutdown complete")
+			return nil
+		case <-sighup:
+			slog.Info("SIGHUP received, reloading configuration")
+			cancelUpdater()
+
+			newCfg, err := config.LoadConfig(configFile)
+			if err != nil {
+				slog.Error("reloading config failed, keeping current config", "err", err)
+			} else {
+				cfg = newCfg
+				save = makeSaveFn(cfg)
+				slog.Info("configuration reloaded")
+			}
+
+			updaterCtx, cancelUpdater = context.WithCancel(ctx)
+		}
+	}
 }

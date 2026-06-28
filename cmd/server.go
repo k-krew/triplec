@@ -21,18 +21,46 @@ func runServer(cfg *config.Config, save updater.SaveFunc) error {
 	slog.Info("starting server mode")
 
 	srv, mux := server.New(cfg.Server.ListenAddr, cfg.Server.AuthToken)
-	server.RegisterCertHandler(mux, cfg.Global.StoragePath, cfg.Certificates)
+	certHandler := server.RegisterCertHandler(mux, cfg.Global.StoragePath, cfg.Certificates)
+
+	// updaterCtx is cancelled on SIGHUP to restart the updater cleanly.
+	updaterCtx, cancelUpdater := context.WithCancel(ctx)
+
+	sighup := make(chan os.Signal, 1)
+	signal.Notify(sighup, syscall.SIGHUP)
 
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		u := updater.New(cfg, save)
-		u.Start(gCtx)
-		return nil
+		return srv.Serve(gCtx, cfg.Server.TLSCert, cfg.Server.TLSKey)
 	})
 
 	g.Go(func() error {
-		return srv.Serve(gCtx, cfg.Server.TLSCert, cfg.Server.TLSKey)
+		for {
+			u := updater.New(cfg, save)
+			u.Start(updaterCtx)
+
+			select {
+			case <-gCtx.Done():
+				cancelUpdater()
+				return nil
+			case <-sighup:
+				slog.Info("SIGHUP received, reloading configuration")
+				cancelUpdater()
+
+				newCfg, err := config.LoadConfig(configFile)
+				if err != nil {
+					slog.Error("reloading config failed, keeping current config", "err", err)
+				} else {
+					cfg = newCfg
+					save = makeSaveFn(cfg)
+					certHandler.Update(cfg.Global.StoragePath, cfg.Certificates)
+					slog.Info("configuration reloaded")
+				}
+
+				updaterCtx, cancelUpdater = context.WithCancel(gCtx)
+			}
+		}
 	})
 
 	if err := g.Wait(); err != nil {

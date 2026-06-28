@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/kreicer/triplec/pkg/config"
 	"github.com/kreicer/triplec/pkg/persist"
@@ -19,13 +20,31 @@ type CertResponse struct {
 	PrivateKey  string `json:"private_key"` // base64-encoded PEM private key
 }
 
-// RegisterCertHandler registers GET /api/v1/certs/{domain} on mux.
-func RegisterCertHandler(mux *http.ServeMux, globalStoragePath string, certs []config.CertificateConfig) {
-	index := buildDomainIndex(globalStoragePath, certs)
+// CertHandler serves certificates and exposes an Update method for hot reloads.
+type CertHandler struct {
+	mu    sync.RWMutex
+	index map[string]string
+}
+
+// Update atomically replaces the domain→directory index.
+func (h *CertHandler) Update(globalStoragePath string, certs []config.CertificateConfig) {
+	idx := buildDomainIndex(globalStoragePath, certs)
+	h.mu.Lock()
+	h.index = idx
+	h.mu.Unlock()
+}
+
+// RegisterCertHandler registers GET /api/v1/certs/{domain} on mux and returns
+// the handler so callers can call Update on SIGHUP.
+func RegisterCertHandler(mux *http.ServeMux, globalStoragePath string, certs []config.CertificateConfig) *CertHandler {
+	h := &CertHandler{}
+	h.Update(globalStoragePath, certs)
 
 	mux.HandleFunc("GET /api/v1/certs/{domain}", func(w http.ResponseWriter, r *http.Request) {
 		domain := r.PathValue("domain")
-		dir, ok := index[domain]
+		h.mu.RLock()
+		dir, ok := h.index[domain]
+		h.mu.RUnlock()
 		if !ok {
 			jsonError(w, "certificate not found", http.StatusNotFound)
 			return
@@ -63,6 +82,8 @@ func RegisterCertHandler(mux *http.ServeMux, globalStoragePath string, certs []c
 			slog.Error("encoding cert response", "domain", domain, "err", err)
 		}
 	})
+
+	return h
 }
 
 // buildDomainIndex maps every domain (primary and SANs) configured in certs

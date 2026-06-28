@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/kreicer/triplec/pkg/config"
 )
 
 const version = "0.1.0-dev"
@@ -23,6 +25,16 @@ Configure the operating mode (standalone, server, or client) in the YAML config 
 			fmt.Println("triplec", version)
 			return nil
 		}
+		if t, _ := cmd.Flags().GetBool("test"); t {
+			if configFile == "" {
+				return fmt.Errorf("--config is required")
+			}
+			if _, err := config.LoadConfig(configFile); err != nil {
+				return err
+			}
+			fmt.Println("configuration is valid")
+			return nil
+		}
 		return Run(configFile)
 	},
 }
@@ -37,4 +49,5 @@ func Execute() {
 func init() {
 	rootCmd.Flags().StringVar(&configFile, "config", "", "path to config file (required)")
 	rootCmd.Flags().Bool("version", false, "print version and exit")
+	rootCmd.Flags().BoolP("test", "t", false, "validate config file and exit")
 }

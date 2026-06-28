@@ -7,6 +7,7 @@ import (
 	"github.com/kreicer/triplec/pkg/config"
 	"github.com/kreicer/triplec/pkg/logger"
 	"github.com/kreicer/triplec/pkg/persist"
+	"github.com/kreicer/triplec/pkg/updater"
 )
 
 // Run is the central entry point after CLI parsing. It loads the config,
@@ -25,9 +26,7 @@ func Run(configPath string) error {
 		return err
 	}
 
-	save := func(cert config.CertificateConfig, res *certificate.Resource) error {
-		return persist.SaveCert(cfg.Global.StoragePath, cert, res)
-	}
+	save := makeSaveFn(cfg)
 
 	switch cfg.Global.Mode {
 	case config.ModeStandalone:
@@ -38,5 +37,11 @@ func Run(configPath string) error {
 		return runClient(cfg)
 	default:
 		return fmt.Errorf("mode %q not yet implemented", cfg.Global.Mode)
+	}
+}
+
+func makeSaveFn(cfg *config.Config) updater.SaveFunc {
+	return func(cert config.CertificateConfig, res *certificate.Resource) error {
+		return persist.SaveCert(cfg.Global.StoragePath, cert, res)
 	}
 }
