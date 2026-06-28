@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -51,7 +52,9 @@ func New(cfg *config.Config, onCert OnCertFunc) *Client {
 	}
 }
 
-// Start runs the polling loop, waking immediately and then every CheckInterval.
+// Start runs the polling loop, waking immediately and then every CheckInterval
+// plus a random jitter of ±10% to prevent thundering-herd spikes when many
+// clients start simultaneously.
 // It blocks until ctx is cancelled.
 func (c *Client) Start(ctx context.Context) {
 	interval := c.cfg.Global.CheckInterval
@@ -62,7 +65,7 @@ func (c *Client) Start(ctx context.Context) {
 	slog.Info("client polling started", "server", c.cfg.Client.ServerURL, "interval", interval)
 	c.pollAll()
 
-	ticker := time.NewTicker(interval)
+	ticker := time.NewTicker(jitter(interval))
 	defer ticker.Stop()
 
 	for {
@@ -71,9 +74,16 @@ func (c *Client) Start(ctx context.Context) {
 			slog.Info("client polling stopped")
 			return
 		case <-ticker.C:
+			ticker.Reset(jitter(interval))
 			c.pollAll()
 		}
 	}
+}
+
+// jitter returns d ± 10% chosen uniformly at random.
+func jitter(d time.Duration) time.Duration {
+	pct := rand.Float64()*0.2 - 0.1 // [-0.1, +0.1)
+	return d + time.Duration(float64(d)*pct)
 }
 
 func (c *Client) pollAll() {
