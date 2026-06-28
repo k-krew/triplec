@@ -27,29 +27,29 @@ func RegisterCertHandler(mux *http.ServeMux, globalStoragePath string, certs []c
 		domain := r.PathValue("domain")
 		dir, ok := index[domain]
 		if !ok {
-			http.Error(w, "certificate not found", http.StatusNotFound)
+			jsonError(w, "certificate not found", http.StatusNotFound)
 			return
 		}
 
 		certPEM, err := os.ReadFile(filepath.Join(dir, "cert.pem"))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				http.Error(w, "certificate not yet available", http.StatusNotFound)
+				jsonError(w, "certificate not yet available", http.StatusNotFound)
 				return
 			}
 			slog.Error("reading cert.pem", "dir", dir, "err", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			jsonError(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		keyPEM, err := os.ReadFile(filepath.Join(dir, "key.pem"))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				http.Error(w, "certificate not yet available", http.StatusNotFound)
+				jsonError(w, "certificate not yet available", http.StatusNotFound)
 				return
 			}
 			slog.Error("reading key.pem", "dir", dir, "err", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			jsonError(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 

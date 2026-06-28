@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/subtle"
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -27,9 +28,9 @@ func New(listenAddr, authToken string) (*Server, *http.ServeMux) {
 
 	limiter := rate.NewLimiter(10, 30)
 
-	handler := rateLimit(limiter, mux)
+	handler := requestLogger(rateLimit(limiter, mux))
 	if authToken != "" {
-		handler = rateLimit(limiter, bearerAuth(authToken, mux))
+		handler = requestLogger(rateLimit(limiter, bearerAuth(authToken, mux)))
 	}
 
 	srv := &http.Server{
@@ -80,11 +81,38 @@ func (s *Server) Serve(ctx context.Context, certFile, keyFile string) error {
 	return s.http.Shutdown(shutCtx)
 }
 
+// requestLogger returns middleware that logs each request's method, path,
+// status code, and duration.
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		rw := &responseWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rw, r)
+		slog.Debug("http request",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", rw.status,
+			"duration", time.Since(start).String(),
+		)
+	})
+}
+
+// responseWriter wraps http.ResponseWriter to capture the status code.
+type responseWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.status = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 // rateLimit returns middleware that rejects requests exceeding the limiter's quota.
 func rateLimit(limiter *rate.Limiter, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !limiter.Allow() {
-			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+			jsonError(w, "too many requests", http.StatusTooManyRequests)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -97,9 +125,18 @@ func bearerAuth(token string, next http.Handler) http.Handler {
 		auth := r.Header.Get("Authorization")
 		parts := strings.SplitN(auth, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || subtle.ConstantTimeCompare([]byte(parts[1]), []byte(token)) != 1 {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			jsonError(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// jsonError writes a JSON-encoded {"error": msg} response with the given status.
+func jsonError(w http.ResponseWriter, msg string, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(struct {
+		Error string `json:"error"`
+	}{Error: msg})
 }
