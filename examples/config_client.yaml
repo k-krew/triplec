@@ -1,0 +1,20 @@
+global:
+  mode: "client"
+  storage_path: "/etc/ssl/triplec"
+  check_interval: 1h
+
+logging:
+  level: "info"
+  format: "text"
+
+client:
+  server_url: "http://triplec-server.internal:8080"
+  auth_token: "super-secret-bearer-token"
+  insecure_skip_verify: false
+
+certificates:
+  - domains: ["*.example.com", "example.com"]
+    pre_hooks:
+      - "echo 'Preparing to update certificates...'"
+    post_hooks:
+      - "systemctl reload haproxy"

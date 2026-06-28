@@ -246,4 +246,3 @@ func renewThreshold(cert config.CertificateConfig, globalDays int) time.Duration
 	// globalDays is always set to DefaultRenewBeforeDays by setDefaults in config.
 	return time.Duration(days) * 24 * time.Hour
 }
-

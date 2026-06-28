@@ -1,0 +1,28 @@
+global:
+  mode: "server"
+  storage_path: "/var/lib/triplec/certs"
+  check_interval: 12h
+
+logging:
+  level: "info"
+  format: "json"
+
+server:
+  listen_addr: "0.0.0.0:8080"
+  auth_token: "super-secret-bearer-token"
+  # Optional: Configure TLS for the API server itself
+  # tls_cert: "/path/to/server.crt"
+  # tls_key: "/path/to/server.key"
+
+issuers:
+  letsencrypt-prod:
+    email: "admin@example.com"
+    key_path: "/var/lib/triplec/accounts/le-prod.key"
+    server_url: "https://acme-v02.api.letsencrypt.org/directory"
+
+certificates:
+  - domains: ["*.example.com", "example.com"]
+    challenge: "dns-01"
+    issuer: "letsencrypt-prod"
+    provider:
+      name: "cloudflare"

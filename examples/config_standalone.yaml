@@ -1,0 +1,35 @@
+global:
+  mode: "standalone"
+  storage_path: "/var/lib/triplec/certs"
+  check_interval: 12h
+  renew_before_days: 30
+
+logging:
+  level: "info"
+  format: "text"
+
+issuers:
+  letsencrypt-prod:
+    email: "admin@example.com"
+    key_path: "/var/lib/triplec/accounts/le-prod.key"
+    server_url: "https://acme-v02.api.letsencrypt.org/directory"
+
+certificates:
+  - domains: ["internal.example.com"]
+    challenge: "dns-01"
+    issuer: "letsencrypt-prod"
+    provider:
+      name: "cloudflare"
+      options:
+        auth_token: "your-cloudflare-api-token"
+    post_hooks:
+      - "systemctl reload nginx"
+
+  - domains: ["*.example.local", "example.local"]
+    challenge: "dns-01"
+    issuer: "letsencrypt-prod"
+    # Empty provider defaults to the embedded UDP DNS server
+    provider:
+      name: ""
+    post_hooks:
+      - "/usr/local/bin/deploy_cert.sh"

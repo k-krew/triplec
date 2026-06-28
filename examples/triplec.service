@@ -1,0 +1,17 @@
+[Unit]
+Description=TripleC ACME/TLS Manager
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+# Adjust the path to the binary and config file
+ExecStart=/usr/local/bin/triplec --config /etc/triplec/config.yaml
+# Hot reload configuration without dropping connections
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
