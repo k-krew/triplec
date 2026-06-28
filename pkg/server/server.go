@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // Server wraps an http.Server with the configured mux and auth middleware.
@@ -17,12 +19,17 @@ type Server struct {
 // New creates a Server with the given listen address and Bearer token.
 // Routes are registered via the returned *http.ServeMux so callers can
 // attach additional handlers before calling Start.
+//
+// The server applies a rate limit of 10 requests/second with a burst of 30
+// before authentication, so unauthenticated spam is also limited.
 func New(listenAddr, authToken string) (*Server, *http.ServeMux) {
 	mux := http.NewServeMux()
 
-	var handler http.Handler = mux
+	limiter := rate.NewLimiter(10, 30)
+
+	handler := rateLimit(limiter, mux)
 	if authToken != "" {
-		handler = bearerAuth(authToken, mux)
+		handler = rateLimit(limiter, bearerAuth(authToken, mux))
 	}
 
 	srv := &http.Server{
@@ -71,6 +78,17 @@ func (s *Server) Serve(ctx context.Context, certFile, keyFile string) error {
 	defer cancel()
 	slog.Info("server shutting down")
 	return s.http.Shutdown(shutCtx)
+}
+
+// rateLimit returns middleware that rejects requests exceeding the limiter's quota.
+func rateLimit(limiter *rate.Limiter, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !limiter.Allow() {
+			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // bearerAuth returns middleware that requires a valid Authorization: Bearer <token> header.

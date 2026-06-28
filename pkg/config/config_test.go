@@ -116,9 +116,43 @@ certificates:
 }
 
 func TestLoadConfig_AllModes(t *testing.T) {
-	for _, mode := range []Mode{ModeStandalone, ModeServer, ModeClient} {
+	base := func(mode Mode, extra string) string {
+		return "global:\n  mode: " + string(mode) + "\n  storage_path: /tmp/certs\n" + extra
+	}
+
+	cases := map[Mode]string{
+		ModeStandalone: base(ModeStandalone, `issuers:
+  le:
+    email: a@b.com
+    key_path: /tmp/k
+    server_url: https://acme.example.com/dir
+certificates:
+  - domains: [example.com]
+    issuer: le
+`),
+		ModeServer: base(ModeServer, `server:
+  listen_addr: ":8443"
+  auth_token: secret
+issuers:
+  le:
+    email: a@b.com
+    key_path: /tmp/k
+    server_url: https://acme.example.com/dir
+certificates:
+  - domains: [example.com]
+    issuer: le
+`),
+		ModeClient: base(ModeClient, `client:
+  server_url: https://triplec.internal
+  auth_token: secret
+certificates:
+  - domains: [example.com]
+    issuer: le
+`),
+	}
+
+	for mode, yaml := range cases {
 		t.Run(string(mode), func(t *testing.T) {
-			yaml := "global:\n  mode: " + string(mode) + "\n"
 			_, err := LoadConfig(writeTemp(t, yaml))
 			if err != nil {
 				t.Errorf("unexpected error for mode %q: %v", mode, err)
@@ -160,11 +194,20 @@ func TestLoadConfig_ServerAndClientFields(t *testing.T) {
 	yaml := `
 global:
   mode: server
+  storage_path: /tmp/certs
 server:
   listen_addr: ":8443"
   auth_token: secret
   tls_cert: /etc/triplec/tls.crt
   tls_key: /etc/triplec/tls.key
+issuers:
+  le:
+    email: a@b.com
+    key_path: /tmp/k
+    server_url: https://acme.example.com/dir
+certificates:
+  - domains: [example.com]
+    issuer: le
 `
 	cfg, err := LoadConfig(writeTemp(t, yaml))
 	if err != nil {

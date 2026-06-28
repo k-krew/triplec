@@ -105,5 +105,55 @@ func validate(cfg *Config) error {
 	default:
 		return fmt.Errorf("global.mode must be one of: standalone, server, client (got %q)", cfg.Global.Mode)
 	}
+
+	if cfg.Global.StoragePath == "" {
+		return fmt.Errorf("global.storage_path is required")
+	}
+
+	switch cfg.Global.Mode {
+	case ModeStandalone, ModeServer:
+		if len(cfg.Certificates) == 0 {
+			return fmt.Errorf("at least one certificate must be configured in %s mode", cfg.Global.Mode)
+		}
+		for i, cert := range cfg.Certificates {
+			if len(cert.Domains) == 0 {
+				return fmt.Errorf("certificates[%d]: at least one domain is required", i)
+			}
+			if cert.Issuer == "" {
+				return fmt.Errorf("certificates[%d]: issuer is required", i)
+			}
+			if _, ok := cfg.Issuers[cert.Issuer]; !ok {
+				return fmt.Errorf("certificates[%d]: issuer %q is not defined in issuers", i, cert.Issuer)
+			}
+		}
+		for name, iss := range cfg.Issuers {
+			if iss.Email == "" {
+				return fmt.Errorf("issuers.%s: email is required", name)
+			}
+			if iss.KeyPath == "" {
+				return fmt.Errorf("issuers.%s: key_path is required", name)
+			}
+			if iss.ServerURL == "" {
+				return fmt.Errorf("issuers.%s: server_url is required", name)
+			}
+		}
+		if cfg.Global.Mode == ModeServer && cfg.Server.ListenAddr == "" {
+			return fmt.Errorf("server.listen_addr is required in server mode")
+		}
+		if cfg.Global.Mode == ModeServer && cfg.Server.AuthToken == "" {
+			return fmt.Errorf("server.auth_token is required in server mode")
+		}
+	case ModeClient:
+		if cfg.Client.ServerURL == "" {
+			return fmt.Errorf("client.server_url is required in client mode")
+		}
+		if cfg.Client.AuthToken == "" {
+			return fmt.Errorf("client.auth_token is required in client mode")
+		}
+		if len(cfg.Certificates) == 0 {
+			return fmt.Errorf("at least one certificate must be configured in client mode")
+		}
+	}
+
 	return nil
 }
