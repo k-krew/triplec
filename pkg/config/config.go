@@ -16,6 +16,12 @@ const (
 	ModeClient     Mode = "client"
 )
 
+// Defaults applied when the config file omits optional fields.
+const (
+	DefaultCheckInterval   = 4 * time.Hour
+	DefaultRenewBeforeDays = 30
+)
+
 // Config is the top-level configuration structure.
 type Config struct {
 	Global       GlobalConfig            `yaml:"global"`
@@ -92,11 +98,22 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("parsing config file: %w", err)
 	}
 
+	setDefaults(&cfg)
+
 	if err := validate(&cfg); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	return &cfg, nil
+}
+
+func setDefaults(cfg *Config) {
+	if cfg.Global.CheckInterval <= 0 {
+		cfg.Global.CheckInterval = DefaultCheckInterval
+	}
+	if cfg.Global.RenewBeforeDays <= 0 {
+		cfg.Global.RenewBeforeDays = DefaultRenewBeforeDays
+	}
 }
 
 func validate(cfg *Config) error {

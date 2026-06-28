@@ -23,8 +23,6 @@ import (
 	"github.com/kreicer/triplec/pkg/persist"
 )
 
-const defaultRenewBeforeDays = 30
-
 // SaveFunc is called with the renewed certificate material so the persistence
 // layer (v0.2.5) can write it to disk.
 type SaveFunc func(cert config.CertificateConfig, res *certificate.Resource) error
@@ -44,9 +42,6 @@ func New(cfg *config.Config, saveFn SaveFunc) *Updater {
 // is cancelled.
 func (u *Updater) Start(ctx context.Context) {
 	interval := u.cfg.Global.CheckInterval
-	if interval <= 0 {
-		interval = 4 * time.Hour
-	}
 
 	slog.Info("updater started", "interval", interval)
 	u.checkAll(ctx)
@@ -202,11 +197,7 @@ func ensureRegistered(user *legoAcme.User, issuerCfg config.IssuerConfig) error 
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(regPath), 0o700); err != nil {
-		return err
-	}
-
-	return os.WriteFile(regPath, data, 0o600)
+	return persist.WriteAtomic(regPath, data, 0o600)
 }
 
 // parseCert reads and parses the first certificate PEM block from path.
@@ -252,9 +243,7 @@ func renewThreshold(cert config.CertificateConfig, globalDays int) time.Duration
 	if days <= 0 {
 		days = globalDays
 	}
-	if days <= 0 {
-		days = defaultRenewBeforeDays
-	}
+	// globalDays is always set to DefaultRenewBeforeDays by setDefaults in config.
 	return time.Duration(days) * 24 * time.Hour
 }
 
