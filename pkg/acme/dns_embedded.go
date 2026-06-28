@@ -112,7 +112,10 @@ func (p *EmbeddedDNSProvider) serve(conn *net.UDPConn) {
 		if err != nil {
 			return
 		}
-		go p.handleQuery(conn, addr, buf[:n])
+		// Handle synchronously — no goroutine per packet. This keeps memory
+		// bounded under a UDP flood since a single malicious client can no
+		// longer exhaust goroutine/heap space with spoofed packets.
+		p.handleQuery(conn, addr, buf[:n])
 	}
 }
 
