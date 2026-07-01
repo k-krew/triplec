@@ -70,6 +70,38 @@ Acts as the central control plane. It performs all the duties of Standalone mode
 ### 3. Client Mode (`client`)
 Runs on your isolated, air-gapped nodes. It has no ACME logic and requires no internet access. It simply polls the TripleC Server via the REST API, compares the remote certificate with the local one byte-for-byte, and if an update is found, saves it atomically and triggers local hooks.
 
+## Using the Embedded DNS Server (DNS-01)
+
+TripleC includes an embedded UDP DNS server to seamlessly handle `dns-01` challenges without requiring API credentials for your DNS provider.
+
+To use it, you must delegate the `_acme-challenge` subdomain to the server running TripleC so that Let's Encrypt (or your ACME CA) can query it for the required TXT records.
+
+### 1. DNS Delegation (NS Record)
+
+In your primary DNS zone (e.g., `example.com`), create an `NS` record pointing the `_acme-challenge` subdomain to the public hostname or IP of your TripleC server:
+
+```text
+_acme-challenge.example.com. IN NS triplec.example.com.
+triplec.example.com.         IN A  203.0.113.5
+```
+
+*(If you are using an internal ACME CA like Step-CA, ensure your internal DNS resolvers forward queries for this zone to the TripleC server).*
+
+### 2. Network Configuration
+
+Ensure that port `53` (UDP) is open on your firewall and routed to the TripleC server so the ACME CA can reach it.
+
+### 3. Custom Port (Optional)
+
+If you cannot bind to port 53 directly (e.g., running as a non-root user), you can configure TripleC to listen on a custom port and use `iptables` or a load balancer to forward port 53 UDP traffic to it:
+
+```yaml
+    provider:
+      name: "" # Embedded DNS
+      options:
+        port: "5353"
+```
+
 ## Configuration Reference
 
 TripleC is configured entirely via a single YAML file. You can find fully documented templates for each operating mode in the [`examples/`](examples/) directory:
